@@ -37,10 +37,10 @@ class SphereFitNode:
         self.xyz_points = None
         
         # Low-pass filters for each parameter
-        self.xc_filter = LowPassFilter(alpha=0.05)
-        self.yc_filter = LowPassFilter(alpha=0.05)
-        self.zc_filter = LowPassFilter(alpha=0.05)
-        self.radius_filter = LowPassFilter(alpha=0.05)
+        self.xc_filter = LowPassFilter(alpha=0.1)
+        self.yc_filter = LowPassFilter(alpha=0.1)
+        self.zc_filter = LowPassFilter(alpha=0.1)
+        self.radius_filter = LowPassFilter(alpha=0.1)
 
     # Callback function for processing received XYZ points
     def xyz_callback(self, msg):
@@ -49,24 +49,47 @@ class SphereFitNode:
 
     # Function to fit a sphere to the received XYZ points
     def fit_sphere(self):
-        # Check if sufficient XYZ points are available
-        if self.xyz_points is None or len(self.xyz_points) < 4:
-            rospy.logwarn("Insufficient XYZ points received.")
+        try:
+            # Check if sufficient XYZ points are available
+            if self.xyz_points is None or len(self.xyz_points) < 4:
+                rospy.logwarn("Insufficient XYZ points received.")
+                return None
+    
+            # Filter out points with shape other than (3,)
+            valid_points = []
+            for point in self.xyz_points:
+                if len(point) != 3:
+                    rospy.logwarn("Invalid XYZ point received: %s", point)
+                    continue
+                valid_points.append(point)
+    
+            # Check if there are enough valid points
+            if len(valid_points) < 4:
+                rospy.logwarn("Insufficient valid XYZ points received.")
+                return None
+    
+            # Ensure all points have the same dimensionality
+            max_dim = 3
+            xyz_points_fixed = np.zeros((len(valid_points), max_dim))
+            for i, point in enumerate(valid_points):
+                xyz_points_fixed[i, :len(point)] = point
+    
+            # Prepare matrices for solving the least squares problem
+            A = np.column_stack((2*xyz_points_fixed, np.ones(len(valid_points))))
+            B = np.sum(xyz_points_fixed**2, axis=1)
+    
+            # Solve the least squares problem to obtain sphere parameters
+            P = np.linalg.lstsq(A, B, rcond=None)[0]
+    
+            # Calculate sphere center coordinates and radius
+            x_c, y_c, z_c = P[0], P[1], P[2]
+            radius = np.sqrt(x_c**2 + y_c**2 + z_c**2 + P[3])
+    
+            return x_c, y_c, z_c, radius
+        except np.linalg.LinAlgError as e:
+            rospy.logerr("Error occurred during sphere fitting: %s", e)
             return None
-
-        # Prepare matrices for solving the least squares problem
-        A = np.column_stack((2*self.xyz_points, np.ones(len(self.xyz_points))))
-        B = np.sum(self.xyz_points**2, axis=1)
-
-        # Solve the least squares problem to obtain sphere parameters
-        P = np.linalg.lstsq(A, B, rcond=None)[0]
-
-        # Calculate sphere center coordinates and radius
-        x_c, y_c, z_c = P[0], P[1], P[2]
-        radius = np.sqrt(x_c**2 + y_c**2 + z_c**2 + P[3])
-
-        return x_c, y_c, z_c, radius
-
+        
     # Main function to run the node
     def run(self):
         rospy.loginfo("Sphere Fit Node is running")
