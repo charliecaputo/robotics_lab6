@@ -49,12 +49,14 @@ class SphereFitNode:
 
     # Function to fit a sphere to the received XYZ points
     def fit_sphere(self):
+        # Exception handler for error in lab 5
         try:
             # Check if sufficient XYZ points are available
             if self.xyz_points is None or len(self.xyz_points) < 4:
                 rospy.logwarn("Insufficient XYZ points received.")
                 return None
-    
+            
+            # Another problem, below is solution
             # Filter out points with shape other than (3,)
             valid_points = []
             for point in self.xyz_points:
