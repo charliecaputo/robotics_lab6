@@ -37,10 +37,10 @@ class SphereFitNode:
         self.xyz_points = None
         
         # Low-pass filters for each parameter
-        self.xc_filter = LowPassFilter(alpha=0.1)
-        self.yc_filter = LowPassFilter(alpha=0.1)
-        self.zc_filter = LowPassFilter(alpha=0.1)
-        self.radius_filter = LowPassFilter(alpha=0.1)
+        self.xc_filter = LowPassFilter(alpha=0.05)
+        self.yc_filter = LowPassFilter(alpha=0.05)
+        self.zc_filter = LowPassFilter(alpha=0.05)
+        self.radius_filter = LowPassFilter(alpha=0.05)
 
     # Callback function for processing received XYZ points
     def xyz_callback(self, msg):
